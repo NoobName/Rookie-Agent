@@ -1,0 +1,1 @@
+{"version":1,"name":"项目检查","purpose":"查看项目目录与 Git 差异，提出验证方案","inputs":["workspace"],"steps":["调用 files.list 查看目录","读取项目说明和开发约定","使用 git.diff 检查用户改动","提出真实可执行的测试命令并等待终端授权"],"tools":["files.list","files.read","git.diff","terminal.run"],"acceptance":["报告实际发现与未验证项"],"permissions":"沿用任务授权，技能不能扩大权限"}

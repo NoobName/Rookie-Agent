@@ -1,0 +1,51 @@
+# Local dependencies and runtime
+.venv/
+.runtime/
+node_modules/
+.pnpm-store/
+
+# Generated builds (PyInstaller .spec files are generated inside .runtime/)
+dist/
+release/
+*.tsbuildinfo
+*.egg-info/
+
+# Private local configuration; keep shareable templates
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
+config.local.json
+
+# Agent state, including copies in custom AGENT_DATA directories
+data/
+client.token
+agent.db
+agent.db-wal
+agent.db-shm
+agent.db-journal
+before-*.db
+agent-memories.json
+
+# Python caches and test reports
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+coverage.xml
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Logs and OS metadata
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini

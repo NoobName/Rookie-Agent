@@ -1,0 +1,5 @@
+export type State = 'draft'|'clarifying'|'planned'|'awaiting_approval'|'running'|'waiting_for_user'|'paused'|'verifying'|'awaiting_feedback'|'completed'|'failed'|'cancelled';
+export interface AcceptanceCheck {id:string;label:string;kind:'file_exists'|'text_contains'|'command'|'manual';path?:string|null;contains?:string|null;argv?:string[];timeout?:number}
+export interface TaskSpec {goal:string;workspace:string;context:string;inputs:string[];deliverables:string[];acceptance:string[];plan:string[];tools:string[];mode:'ask'|'workspace';provider:string;collaboration:boolean;collaboration_mapping?:Record<string,string>;token_reminder?:number|null;hard_token_budget:number|null;checks?:AcceptanceCheck[];guardrails?:Record<string,number>}
+export interface Task {id:string;session_id:string;state:State;spec:TaskSpec;revision?:number;needs_recovery?:boolean;verification?:{status:string;checks:{id:string;label:string;status:string}[];manual_acceptance:string[];unresolved_calls:string[]}|null}
+export interface AgentEvent {id:number;task_id:string;type:string;payload:Record<string,any>;created:number}

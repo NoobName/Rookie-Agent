@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-11",
+  "environment": {
+    "os": "Windows 11",
+    "python": "3.13.2",
+    "node": "24.19.0"
+  },
+  "backend": {
+    "command": "cmd /c test.cmd -q --basetemp .runtime/reasoning-fix-tests",
+    "passed": 42,
+    "failed": 0,
+    "warnings": "1 upstream Starlette/AnyIO deprecation warning"
+  },
+  "typescript": {
+    "command": "node node_modules/typescript/bin/tsc --noEmit",
+    "exit_code": 0
+  },
+  "web_build": {
+    "command": "node node_modules/vite/bin/vite.js build",
+    "exit_code": 0
+  },
+  "browser_e2e": {
+    "command": "node node_modules/@playwright/test/cli.js test --max-failures=1",
+    "source_backend_passed": 9,
+    "source_port": 8776,
+    "packaged_backend_passed": 9,
+    "packaged_port": 8777,
+    "failed": 0,
+    "screenshots": [
+      "test-results/workbench.png",
+      "test-results/verification.png",
+      "test-results/rich-text.png"
+    ],
+    "verified_version": "0.3.0 (prior run; UI unchanged in 0.3.1)"
+  },
+  "packaged_backend": {
+    "build": "PyInstaller 0.3.1 rebuilt; HTTP/auth and actual DOCX smoke passed; 9 browser E2E from prior 0.3.0 run",
+    "isolated_resource_directory": true,
+    "http_and_auth": "passed",
+    "docx_create_and_reparse": "passed",
+    "coding_demo_with_installed_python": "passed via browser E2E",
+    "acceptance_feedback_recovery_rules": "passed via browser E2E",
+    "settings_and_deletion": "passed via browser E2E; credentials mocked in tests"
+  },
+  "windows_uia": {
+    "window_enumeration": "passed",
+    "foreground_input_emergency_stop": "pending manual verification"
+  },
+  "startup": {
+    "command": "cmd /c start.cmd --no-browser",
+    "exit_code": 0,
+    "status_cmd": "passed",
+    "stop_cmd": "passed on isolated source backend",
+    "powershell_5_encoding": "UTF-8 BOM verified in previous round"
+  },
+  "production_upgrade": {
+    "version": "0.3.0",
+    "port": 8765,
+    "existing_task_count": 1,
+    "backup": "data/backups/before-memory-skills-1791710749.db",
+    "history_preserved": true
+  },
+  "pending": [
+    "Electron desktop runtime and NSIS installer",
+    "real model tool loop, vision and multi-model evaluation",
+    "real search/email accounts",
+    "foreground Windows control",
+    "remaining scope in acceptance.md"
+  ],
+  "settings_fix": {
+    "empty_model_rejected": true,
+    "saved_credentials_preserved": true,
+    "http_status_diagnostics": true,
+    "model_discovery": true,
+    "provider_and_session_deletion": true,
+    "real_user_model_api_called": false
+  },
+  "memory_skills": {
+    "history_export_deletion_index": "passed",
+    "accepted_task_summary": "opt-in; default off; real file acceptance verified",
+    "skill_application": "reviewable plan only; no automatic execution",
+    "safe_rich_text": "code copy, raw HTML and dangerous-link nonexecution verified",
+    "real_chat": "user confirmed API ordinary chat; no new paid API tests by agent"
+  },
+  "reasoning_protocol_fix": {
+    "version": "0.3.1",
+    "streaming_and_nonstreaming": "passed with strict HTTP mock",
+    "multi_tool_batch_and_reload": "passed",
+    "legacy_and_partial_history": "passed",
+    "safe_http_errors": "passed",
+    "real_deepseek_task": "pending user retest; no paid request made",
+    "production_backup": "data/backups/before-reasoning-fix-1791711790.db",
+    "packaged_smoke": "passed on isolated port 8777; test service stopped"
+  }
+}

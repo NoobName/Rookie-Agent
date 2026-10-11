@@ -1,0 +1,29 @@
+{
+  "provider": {
+    "id": "my-api",
+    "name": "我的 OpenAI 兼容模型",
+    "base_url": "https://api.example.com/v1",
+    "model": "replace-with-provider-model-id",
+    "credential_ref": null,
+    "tools": false,
+    "vision": false,
+    "streaming": true,
+    "timeout": 60,
+    "input_price": null,
+    "output_price": null,
+    "extra": {},
+    "verified": {},
+    "profile": {"status": "未评测"}
+  },
+  "defaults": {
+    "provider": "scripted",
+    "permission_mode": "ask",
+    "collaboration": false,
+    "hard_token_budget": null,
+    "email_enabled": false,
+    "bind": "127.0.0.1",
+    "port": 8765,
+    "timezone": "Asia/Shanghai"
+  },
+  "note": "此文件仅为无密钥说明示例，不会自动导入。请通过设置页保存 API 配置，密钥只写入系统凭据存储。"
+}

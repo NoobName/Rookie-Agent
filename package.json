@@ -1,0 +1,24 @@
+{
+  "name": "local-agent-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "desktop": "electron apps/desktop/main.cjs",
+    "test:e2e": "playwright test",
+    "package:desktop": "powershell -ExecutionPolicy Bypass -File scripts/package-desktop.ps1"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "typescript": "5.8.3",
+    "vite": "6.3.5",
+    "electron": "36.3.1",
+    "@playwright/test": "1.52.0"
+  }
+}
