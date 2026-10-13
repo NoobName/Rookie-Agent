@@ -25,3 +25,8 @@ CREATE TABLE IF NOT EXISTS permission_rules(id TEXT PRIMARY KEY,task_id TEXT,wor
 CREATE TABLE IF NOT EXISTS model_requests(id TEXT PRIMARY KEY,task_id TEXT,provider TEXT,status TEXT,attempt INTEGER,created REAL,detail TEXT);
 UPDATE meta SET value='2' WHERE key='schema_version';
 CREATE TABLE IF NOT EXISTS memory_history(id INTEGER PRIMARY KEY AUTOINCREMENT,memory_id TEXT,snapshot TEXT,created REAL);
+CREATE TABLE IF NOT EXISTS usage_meta(usage_id TEXT PRIMARY KEY,cached_input_tokens INTEGER,latency REAL);
+CREATE TABLE IF NOT EXISTS evaluations(id TEXT PRIMARY KEY,task_id TEXT,provider TEXT,model TEXT,suite TEXT,created REAL);
+CREATE TABLE IF NOT EXISTS mcp_servers(id TEXT PRIMARY KEY,config TEXT,credential_ref TEXT);
+CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,name TEXT NOT NULL,workspace TEXT NOT NULL,created REAL);
+CREATE TABLE IF NOT EXISTS session_projects(session_id TEXT PRIMARY KEY,project_id TEXT NOT NULL);

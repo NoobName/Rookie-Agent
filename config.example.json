@@ -13,7 +13,7 @@
     "output_price": null,
     "extra": {},
     "verified": {},
-    "profile": {"status": "未评测"}
+    "profile": { "status": "未评测" }
   },
   "defaults": {
     "provider": "scripted",

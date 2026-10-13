@@ -28,6 +28,8 @@ agent.db-shm
 agent.db-journal
 before-*.db
 agent-memories.json
+.agent-browser-profile/
+task-result-*.json
 
 # Python caches and test reports
 __pycache__/
@@ -49,3 +51,6 @@ playwright/.cache/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Separate local service discovery credential
+discovery.key

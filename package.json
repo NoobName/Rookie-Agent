@@ -1,24 +1,29 @@
 {
   "name": "local-agent-workbench",
-  "version": "0.1.0",
+  "version": "0.7.2",
   "private": true,
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
-    "desktop": "electron apps/desktop/main.cjs",
+    "build": "pnpm format:check && tsc --noEmit && vite build",
+    "desktop": "node scripts/desktop-runtime.cjs",
     "test:e2e": "playwright test",
-    "package:desktop": "powershell -ExecutionPolicy Bypass -File scripts/package-desktop.ps1"
+    "package:desktop": "powershell -ExecutionPolicy Bypass -File scripts/package-desktop.ps1",
+    "format": "prettier --write apps packages tests/e2e \"scripts/*.cjs\" *.ts *.json .prettierrc.json",
+    "format:check": "prettier --check apps packages tests/e2e \"scripts/*.cjs\" *.ts *.json .prettierrc.json"
   },
   "dependencies": {
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.52.0",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
-    "typescript": "5.8.3",
-    "vite": "6.3.5",
     "electron": "36.3.1",
-    "@playwright/test": "1.52.0"
-  }
+    "prettier": "3.5.3",
+    "typescript": "5.8.3",
+    "vite": "6.3.5"
+  },
+  "description": "Local-first personal agent workbench",
+  "author": "Local Agent"
 }

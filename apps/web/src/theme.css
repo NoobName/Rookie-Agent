@@ -1,0 +1,140 @@
+:root {
+  color-scheme: light;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #6a977a;
+  outline-offset: 2px;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  color: #e5e5e5;
+  background: #191919;
+}
+:root[data-theme='dark'] :is(.sidebar, .inspector) {
+  background: #202020;
+  border-color: #383838;
+}
+:root[data-theme='dark']
+  :is(
+    button,
+    input,
+    textarea,
+    select,
+    .new,
+    .composer,
+    .task-card,
+    .result,
+    .project-dialog,
+    .session-menu
+  ) {
+  background: #292929;
+  border-color: #454545;
+  color: #e5e5e5;
+}
+:root[data-theme='dark']
+  :is(
+    header,
+    .artifact-row,
+    .project-sessions,
+    .composer-toolbar,
+    .context-strip,
+    .directory-browser
+  ) {
+  border-color: #383838;
+}
+:root[data-theme='dark']
+  :is(.nav, .session-more, .project-heading button, .section-reset, .directory-list button) {
+  background: transparent;
+}
+:root[data-theme='dark'] :is(button:hover, .selected, .session-row.selected) {
+  background: #383838;
+}
+:root[data-theme='dark'] :is(.primary, .mark) {
+  background: #454545;
+  color: #fff;
+  border-color: #606060;
+}
+:root[data-theme='dark'] .primary:hover {
+  background: #555555;
+}
+:root[data-theme='dark']
+  :is(
+    pre,
+    .rich-message code,
+    .rich-message .code-block,
+    .artifact-preview,
+    .folder-picker,
+    .composer-toolbar select,
+    .pill,
+    .message.user,
+    .notice
+  ) {
+  background: #303030;
+  border-color: #454545;
+  color: #dddddd;
+}
+:root[data-theme='dark'] .code-block pre code {
+  background: transparent;
+}
+:root[data-theme='dark']
+  :is(
+    small,
+    .muted,
+    .section-label,
+    .path,
+    .footnote,
+    .event-line,
+    .context-strip,
+    .upload,
+    .project-heading,
+    .task-card li,
+    .welcome > p,
+    .cards span
+  ) {
+  color: #aaaaaa;
+}
+:root[data-theme='dark'] :is(.online, .eyebrow, .cards small) {
+  color: #bdbdbd;
+}
+:root[data-theme='dark'] :is(.danger, .error) {
+  color: #ffaaa1;
+}
+:root[data-theme='dark'] :is(.banner, .state-failed) {
+  background: #452c2b;
+  color: #ffbab2;
+  border-color: #78504b;
+}
+:root[data-theme='dark'] :is(.approval, .state-awaiting_approval) {
+  background: #3d3523;
+  border-color: #73603c;
+  color: #edd29a;
+}
+:root[data-theme='dark'] .executing {
+  color: #e3bd6d;
+}
+:root[data-theme='dark'] .modal-backdrop {
+  background: #0009;
+}
+:root[data-theme='dark'] .session-menu {
+  box-shadow: 0 8px 25px #0006;
+}
+:root[data-theme='dark'] a {
+  color: #d0d0d0;
+}
+@media (max-width: 760px) {
+  .sidebar .theme-toggle {
+    display: block;
+  }
+}
+
+:root[data-theme='dark'] :is(button, input, select, textarea):focus-visible {
+  outline-color: #a0a0a0;
+}
+:root[data-theme='dark'] .approval-banner {
+  background: #393126;
+  color: #f3d7a0;
+  border-color: #9f814a;
+}
