@@ -738,7 +738,7 @@ test('多轮时间线按用户、思考记录、回复排序且输入框不显�
 test('界面更新提示保留会话与草稿，终端输出默认折叠', async ({ page }) => {
   await page.goto('/#token=' + token());
   await page.getByRole('button', { name: '＋ 新建会话' }).click();
-  await expect(page.getByText('界面 0.7.2', { exact: true })).toBeVisible();
+  await expect(page.getByText('界面 0.8.1', { exact: true })).toBeVisible();
   await page.getByLabel('消息', { exact: true }).fill('尚未发送的草稿');
   await expect(page.locator('.inspector details[open]')).toHaveCount(0);
   await page.route('**/?ui-check=*', (r) =>

@@ -34,7 +34,7 @@ class AcceptanceCheck(Strict):
 
 class Guardrails(Strict):
     max_tool_errors: int = Field(default=3, ge=1, le=20)
-    max_steps: int = Field(default=40, ge=1, le=200)
+    max_steps: int = Field(default=160, ge=1, le=1000)
     repeated_results: int = Field(default=3, ge=2, le=10)
     repair_rounds: int = Field(default=3, ge=0, le=10)
     provider_retries: int = Field(default=2, ge=0, le=5)
@@ -56,6 +56,10 @@ class TaskSpec(Strict):
         "task.plan",
         "files.read",
         "files.search",
+        "files.symbols",
+        "agent.delegate",
+        "web.fetch",
+        "web.search",
         "files.edit",
         "files.write",
         "terminal.run",

@@ -1,6 +1,6 @@
 # 当前架构与维护
 
-当前版本：0.7.1。
+当前版本：0.8.1。
 
 ## 服务和持久化
 
@@ -9,6 +9,14 @@ React → loopback HTTP / SSE → FastAPI → SQLite WAL。Electron 提供窗口
 `app.py` 定义接口；`models.py` 是严格请求契约；`store.py` 与 `migration.sql` 管理持久数据和迁移；`engine.py` 管理单任务队列、模型回合与工具调度；`tools.py` 和专用模块执行真实动作；`policy.py` 独立检查权限。前端在 `apps/web/src`，桌面入口在 `apps/desktop/main.cjs`。
 
 每次工具调用写入 calls、call_meta，模型工具批次通过 model_turns/call_turns 关联原始 provider ID。完整请求/工具结果按合法 assistant/tool 顺序重建。事件日志支持刷新恢复与时间线定位。正在执行的操作中断后标记 interrupted，用户必须审查是否重试或跳过；尚未派发的操作为 not_executed。启动器不按端口猜测 PID 强杀进程。
+
+## 工具并发、检索与子 Agent
+
+单主任务队列内，连续且已获准的只读操作最多 4 路并发。写入、进程和需要申请授权的操作是顺序屏障；返回按原始工具调用顺序排列。calls/call_meta/call_turns 登记合并事务，文件读取/检索在线程执行。暂停取消会等待在途读取收尾，不继续派发。
+
+`delegation.py` 的同模型检索子 Agent 和 `collaboration.py` 的跨模型咨询分开。子 Agent 独立维护 assistant/tool 消息，工具记录标记 `phase=delegation`，从父上下文排除，但 API/界面仍可查看。父任务只接收摘要、出处、未完成标记。子请求计入父任务账单和预算；子循环有独立错误计数和轮数上限，暂停取消跟随父任务。
+
+`code_search.py` 实现正则/glob/上下文行搜索，正则匹配设超时；符号索引按文件路径、修改时间和大小复用，重启后按需重建。Python AST 返回限定名、定义范围，其他语言为词法声明定位。
 
 ## 数据库一致性与后续并发
 
@@ -26,15 +34,19 @@ Store 不再共享跨线程 SQLite 连接。每次独立操作拥有自己的连
 
 `tool_errors.py` 将参数错误、文件缺失、权限、版本冲突、超时、退出码和其他工具错误转换为 `error_info`。记录包括 type、message、exit_code、details、suggestion、requires_user；输出摘要限长，原始结果仍存储。参数不合法也生成工具结果而不是直接抛掉整个回合。
 
-每次 run 开始记录 tool_error_cycle；执行工具出错递增累计计数并记录 tool_error。计数少于 `guardrails.max_tool_errors` 时，下一次请求携带当前任务、对话上下文和工具历史，让模型自行修正。默认上限 3，可设 1–20，成功调用不清零。达到上限即进入 waiting_for_user，同批次剩余工具不派发；用户显式继续才开始新的计数周期。权限受限可提前停止，拒绝授权不当作可绕过的修复机会。
+每次 run 开始记录 tool_error_cycle；执行工具出错递增累计计数并记录 tool_error。计数少于 `guardrails.max_tool_errors` 时，下一次请求携带当前任务、对话上下文和工具历史，让模型自行修正。默认上限 3，可设 1–20，成功调用不清零。达到上限即进入 waiting_for_user，后续尚未派发工具停止，当前并发批次中已启动的只读调用可能完成且保留结果；用户显式继续才开始新的计数周期。权限受限可提前停止，拒绝授权不当作可绕过的修复机会。
 
 429、5xx、网络超时按 provider_retries 有限重试，重试发生在工具派发前。API 协议错误和服务异常保留内部 failed 状态用于审计，UI 映射为“需要你处理”并显示中止原因；单个工具的 failed 仅表示该工具实际报错。无进展重复、步数或预算保护另行请求用户处理。
 
 模型返回最终答复后运行计划中的 checks 并记录证据，不根据历史错误做整体失败判定，也不再触发旧 repair_rounds 修复循环（字段仅为旧计划兼容保留）。机器检查与用户验收分开；用户接受后 completed。没有工具的普通问答可直接结束。
 
+`progress.py` 使用最多 64 条成功调用的内存窗口，复用读写结果中的 SHA-256，并排除时间戳、调用 ID 等噪音。重复观察和文件版本循环默认第 3 次向模型提示，模型实际收到提示后仍达到第 5 次才暂停；不同版本的持续修改只提醒。写入使旧的读取计数失效。检测不调用模型、不重新读取文件；这仍是启发式判断，不能识别所有语义无效修改。
+
+主任务 `max_steps` 默认 160、范围 1–1000，计数单位是模型回合。状态事件持久保存 `reason` 并通过任务的 `stop_reason` 返回：step_limit / no_progress / tool_error_limit / permission_required / budget_limit。额度耗尽支持 `/continue`，保留计划版本和已执行历史；其他原因仍需审查后继续。旧任务显式额度保持原值。
+
 ## 授权、文档与扩展
 
-文件路径经 resolve/commonpath 检查，包含符号链接或 junction 越界检查。工作区模式自动批准 files.write、document.process、document.edit；ask 模式需授权。终端可记录显式授予的工作区权限，撤销后立即重新申请。其他复用规则绑定完整参数、作用域、期限和撤销状态。
+文件路径经 resolve/commonpath 检查，包含符号链接或 junction 越界检查。工作区模式自动批准文件读写、文档处理/修改、web.fetch、web.search 和已声明的只读子任务；ask 模式需授权。终端可记录显式授予的工作区权限，撤销后立即重新申请。其他复用规则绑定完整参数、作用域、期限和撤销状态。
 
 `document_edit.py` 先校验源/目标 SHA-256，再写同目录临时文件、重新检查版本和路径，最后原子替换。失败清理临时文件；同路径和已有输出均支持。DOCX/XLSX/PDF/文本的修改能力有明确格式边界，不等价于通用 Office 编辑器。
 

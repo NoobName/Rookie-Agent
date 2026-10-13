@@ -288,6 +288,17 @@ export function App() {
                               编辑计划 / 继续
                             </button>
                           )}
+                          {task.state === 'waiting_for_user' &&
+                            task.stop_reason === 'step_limit' && (
+                              <button
+                                className="primary"
+                                onClick={() =>
+                                  act(() => request(`/tasks/${tid}/continue`, 'POST', {}))
+                                }
+                              >
+                                继续下一轮
+                              </button>
+                            )}
                           {task.state === 'awaiting_feedback' && (
                             <button
                               className="primary"

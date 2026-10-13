@@ -38,6 +38,8 @@ def plan_context(store, tid):
 
 EXECUTION_GUIDANCE = """
 任务执行方法：
+- 多文件探索先 files.symbols 定位定义，再 files.search 使用 regex/glob/context_lines 缩小范围。独立读取在同一响应中批量调用；依赖写入结果的读取放到下一轮。
+- 大范围研究或可独立的问题用 agent.delegate，提供具体目标和必要背景。子 Agent 自己检索文件/网页，只返回简短结论和出处；主 Agent 综合结果并落实修改。简单问题无需委派。
 - 一般问题直接回答；复杂实现先用 task.plan 维护简短步骤，按实际进展更新 summary 和 next_action。它不是用户验收条件，不要把计划标完成等同于真实测试通过。
 - 进入陌生项目先用 workspace.inspect 了解目录、配置和可用程序，再读取相关项目说明/源码。先复用已有框架、构建和测试，不要重复搭建脚手架；简单文件操作无需套完整流程。
 - 修改已有源码优先 files.edit：从 files.read 取得 SHA-256，提交带唯一上下文的 old/new 替换；匹配不准就搜索/重读，避免为改几行而重写整个文件。新文件使用 files.write。

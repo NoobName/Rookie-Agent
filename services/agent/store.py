@@ -130,6 +130,7 @@ class Store:
             (task_id,),
         )
         row["state_detail"] = json.loads(latest[0]["payload"]).get("detail", "") if latest else ""
+        row["stop_reason"] = json.loads(latest[0]["payload"]).get("reason") if latest else None
         row["timing"] = {
             "started": first,
             "ended": (
@@ -167,12 +168,12 @@ class Store:
         return self.runtime(task_id)["revision"]
 
     @atomic
-    def transition(self, task_id, state, detail=""):
+    def transition(self, task_id, state, detail="", reason=None):
         current = self.task(task_id)["state"]
         if state not in STATES[current]:
             raise ValueError(f"非法状态转换 {current} → {state}")
         self.run("UPDATE tasks SET state=?,updated=? WHERE id=?", (state, time.time(), task_id))
-        self.event(task_id, "state", {"state": state, "detail": detail})
+        self.event(task_id, "state", {"state": state, "detail": detail, "reason": reason})
 
     @atomic
     def recover(self):

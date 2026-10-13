@@ -113,7 +113,7 @@ def create_app(data_dir=None, token=None):
     @app.get("/health")
     async def health():
         # Public liveness only: no token-dependent output, including for legacy nonce queries.
-        return {"ok": True, "app": "local-agent", "version": "0.7.2"}
+        return {"ok": True, "app": "local-agent", "version": "0.8.1"}
 
     @app.get("/discovery")
     async def discovery(nonce: str):
@@ -529,6 +529,14 @@ def create_app(data_dir=None, token=None):
     async def action(tid: str, action: str, body: dict):
         if action == "start":
             await engine.enqueue(tid)
+        elif action == "continue":
+            task = store.task(tid)
+            if task["state"] != "waiting_for_user" or task.get("stop_reason") != "step_limit":
+                raise ValueError("仅回合额度耗尽的任务可直接继续；其他原因请先处理")
+            if task["needs_recovery"]:
+                raise ValueError("请先审查中断操作")
+            store.transition(tid, "planned", "用户继续下一轮；保留计划与历史，不重放工具")
+            await engine.enqueue(tid)
         elif action in ("pause", "cancel"):
             await engine.stop(tid, "paused" if action == "pause" else "cancelled")
         elif action == "accept":
@@ -684,7 +692,7 @@ def create_app(data_dir=None, token=None):
                 "args": json.loads(x["args"]),
                 "result": json.loads(x["result"]) if x["result"] else None,
             }
-            for x in engine.history(tid)
+            for x in engine.history(tid, include_delegated=True)
         ]
 
     @app.get("/api/tasks/{tid}/browser")

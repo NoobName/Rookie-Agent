@@ -9,8 +9,11 @@ from pathlib import Path
 import psutil
 from pydantic import Field
 
+from .code_search import FileSearch, SymbolSearch, search_files, search_symbols
+from .delegation import Delegate
 from .document_edit import DocumentEdit, edit_document
 from .extensions import BrowserArgs, BrowserTools, DesktopArgs, DesktopTools
+from .file_read import read_file
 from .integrations import EmailArgs, SearchArgs, search, send_email
 from .mcp_registry import resolve as resolve_mcp
 from .models import AcceptanceCheck, Command, FileRead, FileWrite, GitCommit, Revert, Strict
@@ -29,12 +32,6 @@ from .workspace import (
 
 class Empty(Strict):
     pass
-
-
-class FileSearch(Strict):
-    query: str = Field(min_length=1, max_length=200)
-    path: str = "."
-    max_results: int = Field(default=50, ge=1, le=200)
 
 
 class Document(Strict):
@@ -63,6 +60,8 @@ SCHEMAS = {
     "terminal.run": Command,
     "document.edit": DocumentEdit,
     "files.search": FileSearch,
+    "files.symbols": SymbolSearch,
+    "agent.delegate": Delegate,
     "git.diff": Empty,
     "document.process": Document,
     "web.fetch": Fetch,
@@ -77,7 +76,9 @@ SCHEMAS = {
     "checks.run": AcceptanceCheck,
 }
 DESCRIPTIONS = {
-    "files.search": "Literal text search inside workspace; bounded to 1000 files, skips symlinks and dependency/private directories. Returns path, line and excerpt.",
+    "files.search": "Search workspace by literal or regex, include/exclude glob, case sensitivity, surrounding context and pagination. Returns file/line excerpts, not whole files.",
+    "files.symbols": "Incremental symbol index: Python AST definitions and lexical TypeScript/JavaScript/C++ declarations. Query name, glob and kind; returns qualified name and source line. Lexical matches are approximate, not full language-server resolution.",
+    "agent.delegate": "Delegate a focused research/code-exploration task to an isolated same-model agent with read-only tools. Supply objective and necessary context, not full chat history. Returns concise findings and evidence; detailed reads remain outside main context. Cannot recursively delegate or edit files.",
     "document.edit": "Edit an existing document using source expected_sha256 from document.process. Omit output or set it equal to source for in-place editing; a different output may be overwritten. Optional expected_output_sha256 checks its version. DOCX run-preserving replacements/append, XLSX typed cell edits preserving other formulas, PDF 1-based page extraction/reorder, text replacements. Edits are validated before atomic replacement; concurrent changes abort the write.",
     "files.read": "Read a bounded UTF-8 page within workspace. offset and max_bytes are byte offsets. Follow next_offset while truncated. sha256 covers the entire file for overwrite checks. Binary files return metadata, not text; inspect images with a suitable image tool or verify via terminal.",
     "files.write": "Create or replace UTF-8 file. Existing file requires matching expected_sha256.",
@@ -176,112 +177,11 @@ class Tools:
                 await emit("task_plan", validated)
                 result["output"] = validated
             elif name == "files.search":
-                folder = inside(root, validated["path"])
-                matches = []
-                count = 0
-                truncated = False
-                for current, dirs, files in os.walk(folder, followlinks=False):
-                    dirs[:] = [
-                        d
-                        for d in dirs
-                        if d
-                        not in (
-                            ".git",
-                            "node_modules",
-                            ".runtime",
-                            ".venv",
-                            ".agent-browser-profile",
-                            "data",
-                        )
-                        and not Path(current, d).is_symlink()
-                    ]
-                    for filename in files:
-                        candidate = Path(current, filename)
-                        if candidate.is_symlink():
-                            continue
-                        candidate = inside(root, str(candidate))
-                        count += 1
-                        if count > 1000:
-                            truncated = True
-                            break
-                        if candidate.stat().st_size > 1_000_000:
-                            continue
-                        try:
-                            lines = candidate.read_text("utf-8").splitlines()
-                        except (UnicodeError, OSError):
-                            continue
-                        for index, line in enumerate(lines, 1):
-                            if validated["query"] in line:
-                                matches.append(
-                                    {
-                                        "path": str(candidate.relative_to(Path(root).resolve())),
-                                        "line": index,
-                                        "text": line[:500],
-                                    }
-                                )
-                            if len(matches) >= validated["max_results"]:
-                                truncated = True
-                                break
-                        if truncated:
-                            break
-                    if truncated:
-                        break
-                result.update(
-                    output=matches,
-                    truncated=truncated,
-                    verification="字面匹配；忽略二进制、超过 1 MB 的文件和依赖/私有目录",
-                )
+                result.update(await self.synchronous(search_files, root, validated))
+            elif name == "files.symbols":
+                result.update(await self.synchronous(search_symbols, root, validated))
             elif name == "files.read":
-                import codecs
-
-                p = inside(root, validated["path"])
-                digest = hashlib.sha256()
-                with p.open("rb") as handle:
-                    size = 0
-                    while chunk := handle.read(1024 * 1024):
-                        digest.update(chunk)
-                        size += len(chunk)
-                    handle.seek(0)
-                    head = handle.read(4096)
-                    handle.seek(validated["offset"])
-                    raw = handle.read(validated["max_bytes"])
-                result.update(
-                    sha256=digest.hexdigest(), size_bytes=size, offset=validated["offset"]
-                )
-                if b"\0" in head or p.suffix.lower() in (
-                    ".exe",
-                    ".dll",
-                    ".bmp",
-                    ".png",
-                    ".jpg",
-                    ".jpeg",
-                    ".pdf",
-                    ".zip",
-                    ".docx",
-                    ".xlsx",
-                ):
-                    result.update(
-                        output="二进制文件：已返回大小和哈希。不能作为 UTF-8 源码读取；请使用对应文档/图像工具，或终端验证文件格式。",
-                        binary=True,
-                        truncated=False,
-                    )
-                else:
-                    decoder = codecs.getincrementaldecoder("utf-8")()
-                    try:
-                        text = decoder.decode(raw, final=validated["offset"] + len(raw) >= size)
-                        next_offset = validated["offset"] + len(raw) - len(decoder.getstate()[0])
-                        result.update(
-                            output=text,
-                            binary=False,
-                            truncated=next_offset < size,
-                            next_offset=next_offset if next_offset < size else None,
-                        )
-                    except UnicodeDecodeError:
-                        result.update(
-                            output="文件不是有效 UTF-8 文本，或 offset 不在字符边界。请用上次返回的 next_offset，或通过终端按实际编码读取。",
-                            binary=True,
-                            truncated=False,
-                        )
+                result.update(await self.synchronous(read_file, root, validated))
             elif name == "files.write":
                 p = inside(root, validated["path"])
                 old = p.read_bytes() if p.exists() else None
@@ -302,6 +202,7 @@ class Tools:
                 # Revalidate after creating parents to detect existing junctions.
                 inside(root, validated["path"])
                 p.write_bytes(content.encode("utf-8"))
+                written_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
                 if self.store:
                     change_id = uid()
                     self.store.run(
@@ -311,12 +212,13 @@ class Tools:
                             task["id"],
                             str(p),
                             old_text,
-                            hashlib.sha256(p.read_bytes()).hexdigest(),
+                            written_hash,
                         ),
                     )
                     result["change_id"] = change_id
                 result.update(
                     output=f"已写入 {p.name}",
+                    sha256=written_hash,
                     artifacts=[str(p.relative_to(Path(root).resolve()))],
                     diff="".join(
                         difflib.unified_diff(

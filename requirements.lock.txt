@@ -53,3 +53,5 @@ typing_extensions==4.16.0
 typing-inspection==0.4.4
 tzdata==2025.2
 uvicorn==0.34.2
+
+regex==2024.11.6

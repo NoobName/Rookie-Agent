@@ -249,6 +249,22 @@ export function PlanEditor({
           />
         </label>
       </div>
+      <label>
+        每轮模型回合上限（1–1000）
+        <input
+          type="number"
+          min="1"
+          max="1000"
+          value={spec.guardrails?.max_steps ?? 160}
+          onChange={(e) =>
+            setSpec({
+              ...spec,
+              guardrails: { ...spec.guardrails, max_steps: Number(e.target.value) },
+            })
+          }
+        />
+        <small>一个回合可以包含多个工具调用。额度耗尽可直接继续；token 和费用预算独立生效。</small>
+      </label>
       <label>所需工具</label>
       <div className="checks">
         {boot.tools.map((tool: string) => (

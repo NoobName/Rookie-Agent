@@ -68,6 +68,7 @@ export function Composer({
   | 'session'
   | 'newTask'
 >) {
+  const latestTask = boot.tasks.find((t: Task) => t.session_id === sid);
   return (
     <div className="composer">
       <div className="context-strip" aria-label="上下文与执行状态">
@@ -80,11 +81,14 @@ export function Composer({
           compaction={compaction}
         />
         <span className={'execution-state ' + (locked ? 'executing' : '')}>
-          {conversationStatus(
-            boot.tasks.find((t: Task) => t.session_id === sid)?.state ||
-              (messages.length ? 'completed' : undefined),
-            busy,
-          )}
+          {latestTask?.stop_reason === 'step_limit' && latestTask.state === 'waiting_for_user'
+            ? '本轮额度已用完，可继续'
+            : latestTask?.stop_reason === 'no_progress' && latestTask.state === 'waiting_for_user'
+              ? '需要调整策略'
+              : conversationStatus(
+                  latestTask?.state || (messages.length ? 'completed' : undefined),
+                  busy,
+                )}
         </span>
       </div>
       <textarea
@@ -171,7 +175,7 @@ export function Composer({
         </select>
         <select
           aria-label="底部权限模式"
-          title="帮我审批：工作区内读取、新建和修改文件自动批准；终端遵循已授予的权限"
+          title="帮我审批：工作区内读写、网页读取和搜索自动批准；终端遵循已授予的权限"
           disabled={locked}
           value={mode}
           onChange={(e) => act(() => controls({ mode: e.target.value as 'ask' | 'workspace' }))}
@@ -218,7 +222,9 @@ export function Composer({
           : editable
             ? '切换会更新当前计划，已有验收需重新执行。'
             : '直接发送可回答问题、处理附件或执行操作，沿用当前工作区与权限。'}
-        {mode === 'workspace' ? ' 工作区内读取和写入自动批准；终端按已授予的权限执行。' : ''}
+        {mode === 'workspace'
+          ? ' 工作区读写、网页读取和搜索自动批准；终端按已授予的权限执行。'
+          : ''}
       </small>
     </div>
   );

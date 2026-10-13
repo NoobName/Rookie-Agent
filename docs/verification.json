@@ -1,50 +1,55 @@
 {
-  "version": "0.7.2",
+  "version": "0.8.1",
   "date": "2026-10-14",
   "backend": {
-    "passed": 87,
+    "passed": 99,
     "warnings": 2,
-    "environment": "Real SQLite, files, Python subprocess and local HTTP fixtures; fixed model call sequences, no paid API"
-  },
-  "agent_capabilities": {
-    "workspace_inspection": "Nested directory/config discovery, package scripts and available executables; does not execute discovered commands",
-    "precise_edit": "SHA-256 checked old/new replacements, prevalidated batch, atomic replacement, CRLF/BOM preservation, diff/artifact/change history",
-    "working_plan": "Persisted steps/summary/next action, included in subsequent requests and resumes; independent of acceptance",
-    "repair_workflow": "Existing diffuse-lighting function repaired with files.edit; real Python assertions passed",
-    "large_file": "Over 1 MB UTF-8 BOM/CRLF file preserved except requested replacement; invalid batch makes no partial write",
-    "live_model_quality": "Not evaluated in this release"
-  },
-  "format": {
-    "python_files": 59,
-    "python": "passed",
-    "frontend": "passed",
-    "combined_command": "format.cmd --check"
+    "result": "99 passed in 56.88s; real files, SQLite, subprocesses and local HTTP protocol fixtures"
   },
   "web": {
     "typecheck": "passed",
     "build": "passed",
-    "existing_e2e_passed": 20,
-    "new_plan_e2e_passed": 1,
-    "result": "Existing 20 tests passed in full run; new plan test passed after fixing fixture acceptance and reopening session after reload. Plan defaults collapsed and persists."
+    "e2e_passed": 22,
+    "result": "22 passed in 50.5s; includes direct continuation without write replay"
+  },
+  "capabilities": {
+    "research_approval": "Declared web.fetch/web.search automatically approved in workspace mode; ask mode unchanged. Search provider configuration still required.",
+    "parallel_reads": "Four reads overlap; write barrier and original response ordering verified; cancellation joins inflight reads. Blocking reads/search moved to worker threads.",
+    "subagents": "Isolated same-model read-only agent; 20 actual files stay in child context. Parent gets summary/references. OpenAI-compatible tool protocol tested; child requests included in task usage/budgets.",
+    "code_search": "Regex with per-match timeout, glob/exclude, case sensitivity, surrounding lines and offset pagination. Incremental Python AST symbol cache updates after edits/deletions. Other language declarations use lexical approximation.",
+    "limits": "No vector semantic search or full LSP resolution; child agents do not write or recursively delegate. Live-model autonomous completion quality not benchmarked.",
+    "progress": "Bounded 64-call window, metadata normalization and existing file hashes; warns before stopping repeated observations/version cycles. Distinct edits only warn. No additional model calls or file rereads.",
+    "rounds": "Default 160, configurable 1-1000 model rounds; persisted typed stop reason and direct continuation without changing plan revision or replaying completed tools. Saved explicit limits unchanged."
+  },
+  "format": {
+    "python_files": 65,
+    "command": "format.cmd --check",
+    "python": "passed",
+    "frontend": "passed"
   },
   "desktop": {
     "build": "passed",
-    "installer": "release/Local Agent Workbench Setup 0.7.2.exe",
-    "installer_sha256": "5a688e59e8bf0e998e9e9f1c347b3bf15f261fb68f5736bb5a4946301c55c4fd",
+    "installer": "release/Local Agent Workbench Setup 0.8.1.exe",
+    "installer_sha256": "f6ad70e8029b803e7b8e0a7dbc4e1bb17e56a60c1166a2eb18f3fe8495860eb7",
     "installed_path": "C:/Users/19601/AppData/Local/Programs/RookieAgent/Local Agent Workbench.exe",
-    "source_ui_smoke": "passed on isolated port 8796",
-    "installed_ui_smoke": "passed on isolated port 8797: startup, authenticated history, sandbox, notification/sound, tray and normal quit",
-    "packaged_capabilities": "Actual inspect/read/edit/plan workflow passed; changed file and persisted plan checked",
-    "sandbox_disabled": false,
-    "clean_machine_and_uninstall_matrix": "not tested"
+    "installed_ui_smoke": "passed on fresh isolated port 8797 after installation completed; startup/history/sandbox/notifications/tray/normal quit",
+    "packaged_capabilities": "Direct round continuation preserves plan revision and writes once; five repeated real reads pause with no_progress. Fixed-call local provider, no paid API.",
+    "sandbox_disabled": false
   },
   "production": {
     "port": 8765,
-    "version": "0.7.2",
+    "version": "0.8.1",
     "state": "running",
-    "backup": "data/backups/before-0.7.2-20261014-010208.db",
+    "backup": "data/backups/before-0.8.1-20261014-020820.db",
     "task_records_preserved": 2,
     "old_tasks_rerun": false
   },
-  "external_services": "No paid API or live account calls; model autonomy and long-task completion quality are not inferred from protocol fixtures."
+  "external_services": "No user API keys, paid model requests or external search accounts used in verification.",
+  "microbenchmark": {
+    "scope": "ProgressTracker.observe with existing file hashes; not end-to-end agent throughput",
+    "calls": 10000,
+    "seconds": 0.1183,
+    "microseconds_per_call": 11.83,
+    "retained_records": 64
+  }
 }

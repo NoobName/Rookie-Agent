@@ -42,6 +42,7 @@ export interface TaskSpec {
   guardrails?: Record<string, number>;
 }
 export interface Task {
+  stop_reason?: string | null;
   id: string;
   session_id: string;
   state: State;

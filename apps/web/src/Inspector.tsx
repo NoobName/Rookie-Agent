@@ -32,7 +32,15 @@ export function Inspector({
         <BrowserControl key={'browser-' + task.id} task={task} request={request} act={act} />
       )}
       <div className="section-label">当前任务</div>
-      <p>{task ? labels[task.state] : '尚未选择任务'}</p>
+      <p>
+        {task?.stop_reason === 'step_limit'
+          ? '本轮额度已用完，可继续'
+          : task?.stop_reason === 'no_progress'
+            ? '需要调整策略'
+            : task
+              ? labels[task.state]
+              : '尚未选择任务'}
+      </p>
       <div className="section-label">工具日志与文件差异</div>
       {calls.map((c) => (
         <details key={c.id}>

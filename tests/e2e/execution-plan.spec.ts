@@ -38,6 +38,34 @@ test('执行计划持续更新且默认折叠', async ({ page, request }) => {
     });
     expect(response.ok()).toBeTruthy();
     const task = await response.json();
+    await page.route(`**/api/tasks/${task.id}/events*`, async (eventRoute) => {
+      const response = await eventRoute.fetch();
+      const events = await response.json();
+      await eventRoute.fulfill({
+        json: [
+          ...events,
+          {
+            id: 90001,
+            task_id: task.id,
+            created: task.created + 0.01,
+            type: 'subagent_started',
+            payload: { id: 'child-ui', objective: '检索光照实现' },
+          },
+          {
+            id: 90002,
+            task_id: task.id,
+            created: task.created + 0.02,
+            type: 'subagent_finished',
+            payload: {
+              id: 'child-ui',
+              status: 'succeeded',
+              output: '光照入口位于 render.py:20',
+              tool_calls: 20,
+            },
+          },
+        ],
+      });
+    });
     await request.post(`/api/tasks/${task.id}/start`, { headers, data: {} });
     await route.fulfill({ json: { task_id: task.id } });
   });
@@ -48,6 +76,9 @@ test('执行计划持续更新且默认折叠', async ({ page, request }) => {
   const plan = page.locator('.execution-plan');
   await expect(plan.locator('summary')).toHaveText('执行步骤 · 1/1');
   await expect(plan).not.toHaveAttribute('open', '');
+  await expect(page.locator('.subagent-progress')).not.toHaveAttribute('open', '');
+  await page.locator('.subagent-progress summary').click();
+  await expect(page.locator('.subagent-progress')).toContainText('光照入口位于 render.py:20');
   await plan.locator('summary').click();
   await expect(plan).toContainText('代码检查结束');
   await page.reload();

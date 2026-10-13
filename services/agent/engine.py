@@ -9,9 +9,11 @@ from .accounting import MeteredProvider, price, totals
 from .attachments import context_parts
 from .collaboration import collaborate
 from .context import budget, project
+from .delegation import READ_TOOLS, delegate
 from .mcp_registry import snapshot as mcp_snapshot
 from .models import ProviderConfig, TaskSpec
 from .policy import PolicyEngine
+from .progress import ProgressTracker
 from .provider_errors import BudgetExceeded, explain
 from .providers import OpenAICompatible, ScriptedProvider
 from .store import dump, uid
@@ -121,28 +123,30 @@ class Engine:
                 "task_id": tid,
             }
             result["error_info"] = describe_tool_error(name, result)
+            with store.transaction():
+                store.run(
+                    "INSERT INTO calls VALUES(?,?,?,?,?,?,?)",
+                    (cid, tid, name, dump(args), "failed", dump(result), time.time()),
+                )
+                store.run(
+                    "INSERT INTO call_meta VALUES(?,?,?,?,?,?)",
+                    (cid, phase, workflow, step, task["revision"], dump([name, args])),
+                )
+                if protocol:
+                    store.run("INSERT INTO call_turns VALUES(?,?,?)", (cid, *protocol))
+            await emit("tool_result", result)
+            return cid, result
+        with store.transaction():
             store.run(
                 "INSERT INTO calls VALUES(?,?,?,?,?,?,?)",
-                (cid, tid, name, dump(args), "failed", dump(result), time.time()),
+                (cid, tid, name, dump(args), "pending", None, time.time()),
             )
             store.run(
                 "INSERT INTO call_meta VALUES(?,?,?,?,?,?)",
-                (cid, phase, workflow, step, task["revision"], dump([name, args])),
+                (cid, phase, workflow, step, task["revision"], resource(name, args)),
             )
             if protocol:
                 store.run("INSERT INTO call_turns VALUES(?,?,?)", (cid, *protocol))
-            await emit("tool_result", result)
-            return cid, result
-        store.run(
-            "INSERT INTO calls VALUES(?,?,?,?,?,?,?)",
-            (cid, tid, name, dump(args), "pending", None, time.time()),
-        )
-        store.run(
-            "INSERT INTO call_meta VALUES(?,?,?,?,?,?)",
-            (cid, phase, workflow, step, task["revision"], resource(name, args)),
-        )
-        if protocol:
-            store.run("INSERT INTO call_turns VALUES(?,?,?)", (cid, *protocol))
         resume = "verifying" if phase == "verification" else "running"
         try:
             if not self.policy.allowed(task, name, args, cid):
@@ -181,7 +185,10 @@ class Engine:
             store.run("UPDATE calls SET status='running' WHERE id=?", (cid,))
             await emit("tool_start", {"call_id": cid, "tool": name, "phase": phase})
             try:
-                result = await self.tools.execute(task, name, args, emit)
+                if name == "agent.delegate":
+                    result = await delegate(self, task, args, emit)
+                else:
+                    result = await self.tools.execute(task, name, args, emit)
             except asyncio.CancelledError:
                 store.run(
                     "UPDATE calls SET status='interrupted',result=? WHERE id=?",
@@ -219,10 +226,68 @@ class Engine:
         finally:
             store.run("UPDATE grants SET revoked=1 WHERE call_id=? AND scope='once'", (cid,))
 
-    def history(self, tid):
+    async def execute_batch(self, task, calls, emit, workflow, step, turn_id):
+        """Parallelize contiguous pre-authorized reads; writes are ordering barriers."""
+
+        def parallel(call):
+            name = call["name"].replace("__", ".")
+            if name not in READ_TOOLS:
+                return False
+            try:
+                args = SCHEMAS[name].model_validate(call["arguments"]).model_dump()
+                return self.policy.allowed(task, name, args, "parallel-preflight")
+            except (ValueError, KeyError, TypeError, PermissionError):
+                return False
+
+        async def execute(call):
+            name = call["name"].replace("__", ".")
+            if name == "checks.run":
+                raise PermissionError("验收由执行器触发，模型不能代替验收")
+            cid, result = await self.invoke(
+                task,
+                name,
+                call["arguments"],
+                emit,
+                "execution",
+                workflow,
+                step,
+                (turn_id, call["id"]) if turn_id else None,
+            )
+            return call, cid, result
+
+        index = 0
+        while index < len(calls):
+            wave = [calls[index]]
+            if parallel(calls[index]):
+                while (
+                    index + len(wave) < len(calls)
+                    and len(wave) < 4
+                    and parallel(calls[index + len(wave)])
+                ):
+                    wave.append(calls[index + len(wave)])
+            index += len(wave)
+            if len(wave) == 1:
+                yield await execute(wave[0])
+                continue
+            await emit(
+                "parallel_batch", {"count": len(wave), "tools": [call["name"] for call in wave]}
+            )
+            jobs = [asyncio.create_task(execute(call)) for call in wave]
+            try:
+                # Preserve tool-call protocol order, regardless of completion order.
+                results = await asyncio.gather(*jobs)
+            finally:
+                for job in jobs:
+                    if not job.done():
+                        job.cancel()
+                await asyncio.gather(*jobs, return_exceptions=True)
+            for result in results:
+                yield result
+
+    def history(self, tid, include_delegated=False):
         return self.store.rows(
-            "SELECT c.*,m.phase,m.workflow,m.step,r.decision FROM calls c LEFT JOIN call_meta m ON m.call_id=c.id LEFT JOIN recovery r ON r.call_id=c.id WHERE c.task_id=? ORDER BY c.created,c.rowid",
-            (tid,),
+            "SELECT c.*,m.phase,m.workflow,m.step,r.decision FROM calls c LEFT JOIN call_meta m ON m.call_id=c.id LEFT JOIN recovery r ON r.call_id=c.id WHERE c.task_id=? AND (? OR COALESCE(m.phase, '') != 'delegation') ORDER BY c.created,c.rowid",
+            (tid, include_delegated),
         )
 
     def messages(self, base, tid, limit, provider=None, config=None, tool_schemas=None):
@@ -560,7 +625,7 @@ class Engine:
                 and sum(len(dump(m)) for m in base) > guard["context_chars"]
             ):
                 raise ValueError("任务输入超过上下文保护阈值，请缩小输入")
-            seen = {}
+            progress = ProgressTracker(guard["repeated_results"], spec["workspace"])
             tool_error_count = 0
             await emit("tool_error_cycle", {"count": 0, "limit": guard["max_tool_errors"]})
             for iteration in range(guard["max_steps"]):
@@ -575,6 +640,7 @@ class Engine:
                         task_id,
                         "waiting_for_user",
                         "达到硬 token 预算，阻止下一请求；在途请求可能超额。",
+                        reason="budget_limit",
                     )
                     return
                 amount = totals(store, task_id)
@@ -625,6 +691,15 @@ class Engine:
                     getattr(provider, "config", None),
                     tool_schemas,
                 )
+                if progress.warning:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": "执行器进展提醒（不是新的任务要求）：" + progress.warning,
+                        }
+                    )
+                    progress.feedback_delivered()
+                    progress.warning = None
                 await emit("model_status", {"phase": "requesting", "detail": "正在等待模型响应"})
                 reply = await self.request(provider, messages, tool_schemas, token, task, emit)
                 await emit("model_status", {"phase": "received", "detail": "模型响应已接收"})
@@ -691,21 +766,11 @@ class Engine:
                         "INSERT INTO model_turns VALUES(?,?,?,?)",
                         (turn_id, task_id, spec["provider"], dump(reply.assistant)),
                     )
-                for call in reply.calls:
+                async for call, cid, result in self.execute_batch(
+                    task, reply.calls, emit, workflow, getattr(provider, "cursor", None), turn_id
+                ):
                     name = call["name"].replace("__", ".")
-                    if name == "checks.run":
-                        raise PermissionError("验收由执行器触发，模型不能代替验收")
                     args = call["arguments"]
-                    cid, result = await self.invoke(
-                        task,
-                        name,
-                        args,
-                        emit,
-                        "execution",
-                        workflow,
-                        getattr(provider, "cursor", None),
-                        (turn_id, call["id"]) if turn_id else None,
-                    )
                     if result.get("status") == "failed":
                         tool_error_count += 1
                         error = result["error_info"]
@@ -720,7 +785,16 @@ class Engine:
                         )
                         if tool_error_count >= guard["max_tool_errors"] or error["requires_user"]:
                             detail = f"本轮工具错误累计 {tool_error_count}/{guard['max_tool_errors']} 次，已停止后续操作。最近错误：{name} / {error['type']}：{error['message']}。{error['suggestion']} 请补充说明或审查计划后继续。"
-                            store.transition(task_id, "waiting_for_user", detail)
+                            store.transition(
+                                task_id,
+                                "waiting_for_user",
+                                detail,
+                                reason=(
+                                    "tool_error_limit"
+                                    if not error["requires_user"]
+                                    else "permission_required"
+                                ),
+                            )
                             await emit(
                                 "notification",
                                 {
@@ -733,36 +807,29 @@ class Engine:
                                 },
                             )
                             return
-                    evidence = {
-                        k: v
-                        for k, v in result.items()
-                        if k
-                        not in (
-                            "started",
-                            "finished",
-                            "duration",
-                            "call_id",
-                            "task_id",
-                            "change_id",
-                        )
-                    }
-                    fingerprint = dump([resource(name, args), evidence])
-                    seen[fingerprint] = seen.get(fingerprint, 0) + 1
-                    if (
-                        result.get("status") != "failed"
-                        and seen[fingerprint] >= guard["repeated_results"]
-                    ):
-                        store.transition(
-                            task_id,
-                            "waiting_for_user",
-                            "相同操作重复得到相同结果，请审查无进展循环",
-                        )
-                        return
-            store.transition(task_id, "waiting_for_user", "达到执行步数保护阈值，请审查后继续")
+                    signal = progress.observe(name, args, result)
+                    if signal:
+                        await emit("progress_warning", signal)
+                        if signal["stop"]:
+                            store.transition(
+                                task_id,
+                                "waiting_for_user",
+                                signal["detail"]
+                                + "已尝试提醒模型调整策略，但重复仍持续。请补充排查方向后继续。",
+                                reason="no_progress",
+                            )
+                            await emit(
+                                "notification",
+                                {"title": "需要调整策略：持续无进展", "detail": signal["detail"]},
+                            )
+                            return
+            detail = f"本轮 {guard['max_steps']} 个模型回合已用完，已保存执行进度。这不表示任务失败或需求有问题；可直接继续下一轮。"
+            store.transition(task_id, "waiting_for_user", detail, reason="step_limit")
+            await emit("notification", {"title": "本轮额度已用完，可直接继续", "detail": detail})
         except asyncio.CancelledError:
             raise
         except BudgetExceeded as exc:
-            store.transition(task_id, "waiting_for_user", str(exc))
+            store.transition(task_id, "waiting_for_user", str(exc), reason="budget_limit")
             await emit("notification", {"title": str(exc)})
         except Exception as exc:
             if store.task(task_id)["state"] in ("running", "awaiting_approval", "verifying"):

@@ -40,7 +40,14 @@ class PolicyEngine:
             raise PermissionError("工具不在任务计划授权范围内")
         if tool == "task.plan":
             return True
-        if tool in ("files.read", "files.write", "files.edit", "files.search", "document.process"):
+        if tool in (
+            "files.read",
+            "files.write",
+            "files.edit",
+            "files.search",
+            "files.symbols",
+            "document.process",
+        ):
             inside(spec["workspace"], args["path"])
         if tool in ("files.list", "workspace.inspect"):
             inside(spec["workspace"], args.get("path", "."))
@@ -80,6 +87,10 @@ class PolicyEngine:
             "files.list",
             "workspace.inspect",
             "files.search",
+            "files.symbols",
+            "web.fetch",
+            "web.search",
+            "agent.delegate",
             "git.diff",
             "git.status",
         ):

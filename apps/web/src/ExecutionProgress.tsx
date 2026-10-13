@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MessageContent } from './MessageContent';
 import { ExecutionPlan } from './ExecutionPlan';
+import { SubagentProgress } from './SubagentProgress';
 export function ExecutionProgress({
   events,
   state,
@@ -45,6 +46,7 @@ export function ExecutionProgress({
   return (
     <section className="execution-progress" aria-label="执行过程">
       <ExecutionPlan events={events} />
+      <SubagentProgress events={events} />
       <details>
         <summary>
           <span className={active ? 'progress-orbit active' : 'progress-orbit'} aria-hidden="true">

@@ -1,6 +1,6 @@
 # 当前需求与边界
 
-当前版本：0.7.1。原始规格见 [requirements-source.txt](../requirements-source.txt)，这里只描述当前产品要求。
+当前版本：0.8.1。原始规格见 [requirements-source.txt](../requirements-source.txt)，这里只描述当前产品要求。
 
 - Windows 本地优先。网页、桌面共享会话、项目、模型配置、执行历史与单任务队列。
 - 普通问答也可调用工具和交付文件，并遵循底部模型、权限、协作设置。项目绑定名称和工作区。

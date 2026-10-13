@@ -25,7 +25,7 @@ export function InterfaceVersion({ refresh }: { refresh: () => void }) {
   }, []);
   return (
     <div className="interface-version">
-      <small>界面 0.7.2</small>
+      <small>界面 0.8.1</small>
       {changed && <button onClick={refresh}>发现新版界面 · 保留草稿并刷新</button>}
     </div>
   );
